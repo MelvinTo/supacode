@@ -22,6 +22,7 @@ struct SettingsFeature {
     var automaticallyArchiveMergedWorktrees: Bool
     var promptForWorktreeCreation: Bool
     var defaultWorktreeBaseDirectoryPath: String
+    var shortcutOverrides: [AppShortcutID: AppShortcutOverride]
     var selection: SettingsSection? = .general
     var repositorySettings: RepositorySettingsFeature.State?
     @Presents var alert: AlertState<Alert>?
@@ -44,6 +45,7 @@ struct SettingsFeature {
       deleteBranchOnDeleteWorktree = settings.deleteBranchOnDeleteWorktree
       automaticallyArchiveMergedWorktrees = settings.automaticallyArchiveMergedWorktrees
       promptForWorktreeCreation = settings.promptForWorktreeCreation
+      shortcutOverrides = settings.shortcutOverrides
       defaultWorktreeBaseDirectoryPath =
         SupacodePaths.normalizedWorktreeBaseDirectoryPath(settings.defaultWorktreeBaseDirectoryPath) ?? ""
     }
@@ -68,7 +70,8 @@ struct SettingsFeature {
         promptForWorktreeCreation: promptForWorktreeCreation,
         defaultWorktreeBaseDirectoryPath: SupacodePaths.normalizedWorktreeBaseDirectoryPath(
           defaultWorktreeBaseDirectoryPath
-        )
+        ),
+        shortcutOverrides: shortcutOverrides
       )
     }
   }
@@ -79,6 +82,9 @@ struct SettingsFeature {
     case setSelection(SettingsSection?)
     case setSystemNotificationsEnabled(Bool)
     case showNotificationPermissionAlert(errorMessage: String?)
+    case updateShortcut(id: AppShortcutID, override: AppShortcutOverride?)
+    case toggleShortcutEnabled(id: AppShortcutID, enabled: Bool)
+    case resetAllShortcuts
     case repositorySettings(RepositorySettingsFeature.Action)
     case alert(PresentationAction<Alert>)
     case delegate(Delegate)
@@ -139,6 +145,7 @@ struct SettingsFeature {
         state.deleteBranchOnDeleteWorktree = normalizedSettings.deleteBranchOnDeleteWorktree
         state.automaticallyArchiveMergedWorktrees = normalizedSettings.automaticallyArchiveMergedWorktrees
         state.promptForWorktreeCreation = normalizedSettings.promptForWorktreeCreation
+        state.shortcutOverrides = normalizedSettings.shortcutOverrides
         state.defaultWorktreeBaseDirectoryPath = normalizedSettings.defaultWorktreeBaseDirectoryPath ?? ""
         state.repositorySettings?.globalDefaultWorktreeBaseDirectoryPath =
           normalizedSettings.defaultWorktreeBaseDirectoryPath
@@ -179,6 +186,40 @@ struct SettingsFeature {
           TextState(message)
         }
         return .none
+
+      case .updateShortcut(let id, let override):
+        if let override {
+          state.shortcutOverrides[id] = override
+        } else {
+          state.shortcutOverrides.removeValue(forKey: id)
+        }
+        return persist(state)
+
+      case .toggleShortcutEnabled(let id, let enabled):
+        if enabled {
+          // Re-enable: if override exists with a real binding, just flip the flag.
+          // If it was a disabled sentinel, remove the override entirely (restore default).
+          if var existing = state.shortcutOverrides[id] {
+            existing.isEnabled = true
+            if existing.keyCode == 0, existing.modifiers.isEmpty {
+              state.shortcutOverrides.removeValue(forKey: id)
+            } else {
+              state.shortcutOverrides[id] = existing
+            }
+          }
+        } else {
+          if var existing = state.shortcutOverrides[id] {
+            existing.isEnabled = false
+            state.shortcutOverrides[id] = existing
+          } else {
+            state.shortcutOverrides[id] = .disabled
+          }
+        }
+        return persist(state)
+
+      case .resetAllShortcuts:
+        state.shortcutOverrides = [:]
+        return persist(state)
 
       case .setSelection(let selection):
         state.selection = selection ?? .general

@@ -1,5 +1,6 @@
 import AppKit
 import ComposableArchitecture
+import Sharing
 import SwiftUI
 
 struct WorktreeDetailView: View {
@@ -249,11 +250,15 @@ struct WorktreeDetailView: View {
     let runScriptIsRunning: Bool
 
     var runScriptHelpText: String {
-      "Run Script (\(AppShortcuts.runScript.display))"
+      @Shared(.settingsFile) var settingsFile
+      let display = AppShortcuts.runScript.effective(from: settingsFile.global.shortcutOverrides)?.display ?? "none"
+      return "Run Script (\(display))"
     }
 
     var stopRunScriptHelpText: String {
-      "Stop Script (\(AppShortcuts.stopRunScript.display))"
+      @Shared(.settingsFile) var settingsFile
+      let display = AppShortcuts.stopRunScript.effective(from: settingsFile.global.shortcutOverrides)?.display ?? "none"
+      return "Stop Script (\(display))"
     }
   }
 
@@ -315,8 +320,8 @@ struct WorktreeDetailView: View {
             isEnabled: toolbarState.runScriptEnabled,
             runHelpText: toolbarState.runScriptHelpText,
             stopHelpText: toolbarState.stopRunScriptHelpText,
-            runShortcut: AppShortcuts.runScript.display,
-            stopShortcut: AppShortcuts.stopRunScript.display,
+            runShortcut: shortcutDisplay(for: AppShortcuts.runScript, fallback: ""),
+            stopShortcut: shortcutDisplay(for: AppShortcuts.stopRunScript, fallback: ""),
             runAction: onRunScript,
             stopAction: onStopRunScript
           )
@@ -334,7 +339,7 @@ struct WorktreeDetailView: View {
       } label: {
         OpenWorktreeActionMenuLabelView(
           action: resolvedOpenActionSelection,
-          shortcutHint: showExtras ? AppShortcuts.openFinder.display : nil
+          shortcutHint: showExtras ? shortcutDisplay(for: AppShortcuts.openFinder, fallback: "") : nil
         )
       }
       .help(openActionHelpText(for: resolvedOpenActionSelection, isDefault: true))
@@ -368,10 +373,14 @@ struct WorktreeDetailView: View {
 
     }
 
+    private func shortcutDisplay(for shortcut: AppShortcut, fallback: String = "none") -> String {
+      @Shared(.settingsFile) var settingsFile
+      return shortcut.effective(from: settingsFile.global.shortcutOverrides)?.display ?? fallback
+    }
+
     private func openActionHelpText(for action: OpenWorktreeAction, isDefault: Bool) -> String {
-      isDefault
-        ? "\(action.title) (\(AppShortcuts.openFinder.display))"
-        : action.title
+      guard isDefault else { return action.title }
+      return "\(action.title) (\(shortcutDisplay(for: AppShortcuts.openFinder)))"
     }
   }
 

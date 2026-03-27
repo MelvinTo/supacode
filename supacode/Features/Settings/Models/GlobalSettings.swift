@@ -16,6 +16,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
   var automaticallyArchiveMergedWorktrees: Bool
   var promptForWorktreeCreation: Bool
   var defaultWorktreeBaseDirectoryPath: String?
+  var shortcutOverrides: [AppShortcutID: AppShortcutOverride]
 
   static let `default` = GlobalSettings(
     appearanceMode: .dark,
@@ -34,7 +35,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     deleteBranchOnDeleteWorktree: true,
     automaticallyArchiveMergedWorktrees: false,
     promptForWorktreeCreation: true,
-    defaultWorktreeBaseDirectoryPath: nil
+    defaultWorktreeBaseDirectoryPath: nil,
+    shortcutOverrides: [:]
   )
 
   init(
@@ -54,7 +56,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     deleteBranchOnDeleteWorktree: Bool,
     automaticallyArchiveMergedWorktrees: Bool,
     promptForWorktreeCreation: Bool,
-    defaultWorktreeBaseDirectoryPath: String? = nil
+    defaultWorktreeBaseDirectoryPath: String? = nil,
+    shortcutOverrides: [AppShortcutID: AppShortcutOverride] = [:]
   ) {
     self.appearanceMode = appearanceMode
     self.defaultEditorID = defaultEditorID
@@ -73,6 +76,7 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     self.automaticallyArchiveMergedWorktrees = automaticallyArchiveMergedWorktrees
     self.promptForWorktreeCreation = promptForWorktreeCreation
     self.defaultWorktreeBaseDirectoryPath = defaultWorktreeBaseDirectoryPath
+    self.shortcutOverrides = shortcutOverrides
   }
 
   init(from decoder: any Decoder) throws {
@@ -122,5 +126,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     defaultWorktreeBaseDirectoryPath =
       try container.decodeIfPresent(String.self, forKey: .defaultWorktreeBaseDirectoryPath)
       ?? Self.default.defaultWorktreeBaseDirectoryPath
+    shortcutOverrides =
+      try container.decodeIfPresent([AppShortcutID: AppShortcutOverride].self, forKey: .shortcutOverrides)
+      ?? Self.default.shortcutOverrides
   }
 }
