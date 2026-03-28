@@ -11,7 +11,12 @@ enum APIServerRouter {
     // Strip query string if present
     let routePath = path.split(separator: "?", maxSplits: 1).first.map(String.init) ?? path
 
-    // All routes must start with /api/v1
+    // ACP agent discovery at well-known path
+    if method == "GET", routePath == "/.well-known/agent.json" {
+      return handleAgentCard(store: store)
+    }
+
+    // All other routes must start with /api/v1
     guard routePath.hasPrefix("/api/v1/") || routePath == "/api/v1" else {
       return .notFound(message: "Expected /api/v1 prefix")
     }
@@ -111,6 +116,228 @@ enum APIServerRouter {
     }
 
     return .notFound()
+  }
+
+  // MARK: - ACP Agent Discovery
+
+  private static func handleAgentCard(store: StoreOf<AppFeature>) -> HTTPResponse {
+    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+    let port = store.settings.apiServerPort
+    let card = APIModels.AgentCard(
+      name: "Supacode",
+      description: "macOS orchestrator for running multiple coding agents in parallel "
+        + "with git worktree isolation and integrated terminal management.",
+      url: "http://127.0.0.1:\(port)/api/v1",
+      version: version,
+      capabilities: APIModels.AgentCapabilities(
+        streaming: false,
+        pushNotifications: false
+      ),
+      skills: agentSkills(),
+      provider: APIModels.AgentProvider(
+        organization: "Supabit",
+        url: "https://supacode.sh"
+      ),
+      documentationUrl: "http://127.0.0.1:\(port)/api/v1/health"
+    )
+    return .ok(json: card)
+  }
+
+  private static func agentSkills() -> [APIModels.AgentSkill] {
+    repositorySkills() + worktreeSkills() + terminalSkills()
+  }
+
+  private static func repositorySkills() -> [APIModels.AgentSkill] {
+    [
+      APIModels.AgentSkill(
+        id: "list-repositories",
+        name: "List Repositories",
+        description: "List all registered git repositories managed by Supacode.",
+        inputSchema: nil,
+        examples: [
+          APIModels.AgentSkill.SkillExample(
+            method: "GET",
+            path: "/api/v1/repositories",
+            body: nil,
+            description: "Returns array of repositories with IDs, names, and worktree counts"
+          ),
+        ]
+      ),
+      APIModels.AgentSkill(
+        id: "list-worktrees",
+        name: "List Worktrees",
+        description: "List all worktrees for a repository, including selection state.",
+        inputSchema: APIModels.AgentSkill.InputSchema(
+          type: "object",
+          properties: [
+            "repositoryID": APIModels.AgentSkill.SchemaProperty(
+              type: "string",
+              description: "The repository ID (root URL path)"
+            ),
+          ],
+          required: ["repositoryID"]
+        ),
+        examples: [
+          APIModels.AgentSkill.SkillExample(
+            method: "GET",
+            path: "/api/v1/repositories/{repositoryID}/worktrees",
+            body: nil,
+            description: "Returns array of worktrees with IDs, names, and selection state"
+          ),
+        ]
+      ),
+      APIModels.AgentSkill(
+        id: "create-worktree",
+        name: "Create Worktree",
+        description: "Create a new git worktree with auto-generated name in a repository.",
+        inputSchema: APIModels.AgentSkill.InputSchema(
+          type: "object",
+          properties: [
+            "repositoryID": APIModels.AgentSkill.SchemaProperty(
+              type: "string",
+              description: "The repository ID to create the worktree in"
+            ),
+          ],
+          required: ["repositoryID"]
+        ),
+        examples: [
+          APIModels.AgentSkill.SkillExample(
+            method: "POST",
+            path: "/api/v1/repositories/{repositoryID}/worktrees",
+            body: nil,
+            description: "Creates a worktree and returns 202 Accepted"
+          ),
+        ]
+      ),
+    ]
+  }
+
+  private static func worktreeSkills() -> [APIModels.AgentSkill] {
+    [
+      APIModels.AgentSkill(
+        id: "select-worktree",
+        name: "Select Worktree",
+        description: "Focus a worktree in the Supacode UI.",
+        inputSchema: APIModels.AgentSkill.InputSchema(
+          type: "object",
+          properties: [
+            "worktreeID": APIModels.AgentSkill.SchemaProperty(
+              type: "string",
+              description: "The worktree ID to select"
+            ),
+          ],
+          required: ["worktreeID"]
+        ),
+        examples: [
+          APIModels.AgentSkill.SkillExample(
+            method: "POST",
+            path: "/api/v1/worktrees/{worktreeID}/select",
+            body: nil,
+            description: "Selects the worktree and returns 202 Accepted"
+          ),
+        ]
+      ),
+      APIModels.AgentSkill(
+        id: "manage-worktree",
+        name: "Manage Worktree Lifecycle",
+        description: "Archive, unarchive, or delete worktrees.",
+        inputSchema: APIModels.AgentSkill.InputSchema(
+          type: "object",
+          properties: [
+            "worktreeID": APIModels.AgentSkill.SchemaProperty(
+              type: "string",
+              description: "The worktree ID to manage"
+            ),
+            "action": APIModels.AgentSkill.SchemaProperty(
+              type: "string",
+              description: "One of: archive, unarchive, delete"
+            ),
+          ],
+          required: ["worktreeID", "action"]
+        ),
+        examples: [
+          APIModels.AgentSkill.SkillExample(
+            method: "POST",
+            path: "/api/v1/worktrees/{worktreeID}/archive",
+            body: nil,
+            description: "Archives the worktree"
+          ),
+          APIModels.AgentSkill.SkillExample(
+            method: "DELETE",
+            path: "/api/v1/worktrees/{worktreeID}",
+            body: nil,
+            description: "Deletes the worktree (triggers confirmation in app)"
+          ),
+        ]
+      ),
+    ]
+  }
+
+  private static func terminalSkills() -> [APIModels.AgentSkill] {
+    [
+      APIModels.AgentSkill(
+        id: "run-script",
+        name: "Run Script",
+        description: "Execute a shell script in a worktree's terminal.",
+        inputSchema: APIModels.AgentSkill.InputSchema(
+          type: "object",
+          properties: [
+            "worktreeID": APIModels.AgentSkill.SchemaProperty(
+              type: "string",
+              description: "The worktree ID to run the script in"
+            ),
+            "script": APIModels.AgentSkill.SchemaProperty(
+              type: "string",
+              description: "The shell script to execute"
+            ),
+          ],
+          required: ["worktreeID", "script"]
+        ),
+        examples: [
+          APIModels.AgentSkill.SkillExample(
+            method: "POST",
+            path: "/api/v1/worktrees/{worktreeID}/terminal/run-script",
+            body: AnyCodable(["script": "npm test"]),
+            description: "Runs the script and returns 202 Accepted"
+          ),
+        ]
+      ),
+      APIModels.AgentSkill(
+        id: "terminal-management",
+        name: "Terminal Management",
+        description: "Create and close terminal tabs, stop running scripts.",
+        inputSchema: APIModels.AgentSkill.InputSchema(
+          type: "object",
+          properties: [
+            "worktreeID": APIModels.AgentSkill.SchemaProperty(
+              type: "string",
+              description: "The worktree ID"
+            ),
+          ],
+          required: ["worktreeID"]
+        ),
+        examples: [
+          APIModels.AgentSkill.SkillExample(
+            method: "POST",
+            path: "/api/v1/worktrees/{worktreeID}/terminal/tab",
+            body: nil,
+            description: "Creates a new terminal tab"
+          ),
+          APIModels.AgentSkill.SkillExample(
+            method: "POST",
+            path: "/api/v1/worktrees/{worktreeID}/terminal/close-tab",
+            body: nil,
+            description: "Closes the focused terminal tab"
+          ),
+          APIModels.AgentSkill.SkillExample(
+            method: "POST",
+            path: "/api/v1/worktrees/{worktreeID}/terminal/stop-script",
+            body: nil,
+            description: "Stops a running script"
+          ),
+        ]
+      ),
+    ]
   }
 
   // MARK: - Health
