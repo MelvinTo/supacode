@@ -76,7 +76,13 @@ final class WorktreeTerminalState {
     Task {
       let setupScript: String?
       if pendingSetupScript {
-        setupScript = repositorySettings.setupScript
+        let settings = repositorySettings
+        setupScript = Self.buildSetupScript(
+          baseScript: settings.setupScript,
+          autoSpawnTmux: settings.autoSpawnTmux,
+          autoSpawnClaudeCode: settings.autoSpawnClaudeCode,
+          worktreeName: worktree.name
+        )
       } else {
         setupScript = nil
       }
@@ -87,6 +93,25 @@ final class WorktreeTerminalState {
         isEnsuringInitialTab = false
       }
     }
+  }
+
+  private static func buildSetupScript(
+    baseScript: String,
+    autoSpawnTmux: Bool,
+    autoSpawnClaudeCode: Bool,
+    worktreeName: String
+  ) -> String {
+    guard autoSpawnTmux else { return baseScript }
+    let sessionName = worktreeName.replacing(/[.:]/, with: { _ in "-" })
+    var script = "tmux new-session -d -s '\(sessionName)'"
+    if autoSpawnClaudeCode {
+      script += " 'claude'"
+    }
+    script += " && tmux attach -t '\(sessionName)'"
+    if !baseScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      script = baseScript.trimmingCharacters(in: .whitespacesAndNewlines) + "\n" + script
+    }
+    return script
   }
 
   @discardableResult

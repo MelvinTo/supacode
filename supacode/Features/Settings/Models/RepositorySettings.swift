@@ -10,6 +10,8 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
   var copyIgnoredOnWorktreeCreate: Bool
   var copyUntrackedOnWorktreeCreate: Bool
   var pullRequestMergeStrategy: PullRequestMergeStrategy
+  var autoSpawnTmux: Bool
+  var autoSpawnClaudeCode: Bool
 
   private enum CodingKeys: String, CodingKey {
     case setupScript
@@ -21,6 +23,8 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
     case copyIgnoredOnWorktreeCreate
     case copyUntrackedOnWorktreeCreate
     case pullRequestMergeStrategy
+    case autoSpawnTmux
+    case autoSpawnClaudeCode
   }
 
   static let `default` = RepositorySettings(
@@ -32,7 +36,9 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
     worktreeBaseDirectoryPath: nil,
     copyIgnoredOnWorktreeCreate: false,
     copyUntrackedOnWorktreeCreate: false,
-    pullRequestMergeStrategy: .merge
+    pullRequestMergeStrategy: .merge,
+    autoSpawnTmux: false,
+    autoSpawnClaudeCode: false
   )
 
   init(
@@ -44,7 +50,9 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
     worktreeBaseDirectoryPath: String? = nil,
     copyIgnoredOnWorktreeCreate: Bool,
     copyUntrackedOnWorktreeCreate: Bool,
-    pullRequestMergeStrategy: PullRequestMergeStrategy
+    pullRequestMergeStrategy: PullRequestMergeStrategy,
+    autoSpawnTmux: Bool = false,
+    autoSpawnClaudeCode: Bool = false
   ) {
     self.setupScript = setupScript
     self.archiveScript = archiveScript
@@ -55,6 +63,8 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
     self.copyIgnoredOnWorktreeCreate = copyIgnoredOnWorktreeCreate
     self.copyUntrackedOnWorktreeCreate = copyUntrackedOnWorktreeCreate
     self.pullRequestMergeStrategy = pullRequestMergeStrategy
+    self.autoSpawnTmux = autoSpawnTmux
+    self.autoSpawnClaudeCode = autoSpawnClaudeCode
   }
 
   init(from decoder: Decoder) throws {
@@ -90,5 +100,11 @@ nonisolated struct RepositorySettings: Codable, Equatable, Sendable {
         PullRequestMergeStrategy.self,
         forKey: .pullRequestMergeStrategy
       ) ?? Self.default.pullRequestMergeStrategy
+    autoSpawnTmux =
+      try container.decodeIfPresent(Bool.self, forKey: .autoSpawnTmux)
+      ?? Self.default.autoSpawnTmux
+    autoSpawnClaudeCode =
+      try container.decodeIfPresent(Bool.self, forKey: .autoSpawnClaudeCode)
+      ?? Self.default.autoSpawnClaudeCode
   }
 }

@@ -188,11 +188,37 @@ final class WorktreeTerminalManager {
     if state.needsSetupScript() {
       @SharedReader(.repositorySettings(worktree.repositoryRootURL))
       var settings = RepositorySettings.default
-      setupScript = settings.setupScript
+      setupScript = Self.buildSetupScript(
+        baseScript: settings.setupScript,
+        autoSpawnTmux: settings.autoSpawnTmux,
+        autoSpawnClaudeCode: settings.autoSpawnClaudeCode,
+        worktreeName: worktree.name
+      )
     } else {
       setupScript = nil
     }
     _ = state.createTab(setupScript: setupScript, initialInput: initialInput)
+  }
+
+  private static func buildSetupScript(
+    baseScript: String,
+    autoSpawnTmux: Bool,
+    autoSpawnClaudeCode: Bool,
+    worktreeName: String
+  ) -> String {
+    guard autoSpawnTmux else { return baseScript }
+    // Sanitize worktree name for tmux session name (replace dots/colons)
+    let sessionName = worktreeName.replacing(/[.:]/, with: { _ in "-" })
+    var script = "tmux new-session -d -s '\(sessionName)'"
+    if autoSpawnClaudeCode {
+      script += " 'claude'"
+    }
+    script += " && tmux attach -t '\(sessionName)'"
+    if !baseScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      // Run user setup script before tmux attach
+      script = baseScript.trimmingCharacters(in: .whitespacesAndNewlines) + "\n" + script
+    }
+    return script
   }
 
   @discardableResult

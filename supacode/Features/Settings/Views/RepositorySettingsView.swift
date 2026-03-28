@@ -128,6 +128,37 @@ struct RepositorySettingsView: View {
         }
       }
       Section {
+        VStack(alignment: .leading) {
+          Toggle(
+            "Auto-spawn tmux session",
+            isOn: settings.autoSpawnTmux
+          )
+          .help("Automatically start a tmux session with a unique ID for the first terminal of each worktree")
+          Text("Creates a tmux session named after the worktree for the initial terminal.")
+            .foregroundStyle(.secondary)
+            .font(.callout)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading) {
+          Toggle(
+            "Auto-spawn Claude Code session",
+            isOn: settings.autoSpawnClaudeCode
+          )
+          .help("Automatically launch Claude Code inside the tmux session's first window")
+          .disabled(!settings.autoSpawnTmux.wrappedValue)
+          Text("Launches Claude Code in the first tmux window. Requires tmux auto-spawn.")
+            .foregroundStyle(.secondary)
+            .font(.callout)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+      } header: {
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Terminal Automation")
+          Text("Automatically configure the first terminal for each worktree")
+            .foregroundStyle(.secondary)
+        }
+      }
+      Section {
         ZStack(alignment: .topLeading) {
           PlainTextEditor(
             text: settings.setupScript
