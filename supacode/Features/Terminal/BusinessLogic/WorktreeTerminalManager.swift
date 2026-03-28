@@ -209,15 +209,19 @@ final class WorktreeTerminalManager {
     guard autoSpawnTmux else { return baseScript }
     // Sanitize worktree name for tmux session name (replace dots/colons)
     let sessionName = worktreeName.replacing(/[.:]/, with: { _ in "-" })
-    var script = "tmux new-session -d -s '\(sessionName)'"
+    // -A attaches to existing session if it exists, otherwise creates a new one.
+    // This resumes terminals across Supacode restarts.
+    var tmuxCmd = "tmux new-session -A -s '\(sessionName)'"
     if autoSpawnClaudeCode {
-      script += " 'claude'"
+      // Only runs claude when creating a new session, not when reattaching
+      tmuxCmd += " 'claude'"
     }
-    script += " && tmux attach -t '\(sessionName)'"
-    if !baseScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-      // Run user setup script before tmux attach
-      script = baseScript.trimmingCharacters(in: .whitespacesAndNewlines) + "\n" + script
+    var script = ""
+    let trimmedBase = baseScript.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmedBase.isEmpty {
+      script = trimmedBase + "\n"
     }
+    script += tmuxCmd
     return script
   }
 

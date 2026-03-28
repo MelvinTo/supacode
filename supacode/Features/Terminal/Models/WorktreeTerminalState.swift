@@ -103,14 +103,16 @@ final class WorktreeTerminalState {
   ) -> String {
     guard autoSpawnTmux else { return baseScript }
     let sessionName = worktreeName.replacing(/[.:]/, with: { _ in "-" })
-    var script = "tmux new-session -d -s '\(sessionName)'"
+    var tmuxCmd = "tmux new-session -A -s '\(sessionName)'"
     if autoSpawnClaudeCode {
-      script += " 'claude'"
+      tmuxCmd += " 'claude'"
     }
-    script += " && tmux attach -t '\(sessionName)'"
-    if !baseScript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-      script = baseScript.trimmingCharacters(in: .whitespacesAndNewlines) + "\n" + script
+    var script = ""
+    let trimmedBase = baseScript.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmedBase.isEmpty {
+      script = trimmedBase + "\n"
     }
+    script += tmuxCmd
     return script
   }
 
