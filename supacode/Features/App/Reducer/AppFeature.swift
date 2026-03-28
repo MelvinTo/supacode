@@ -79,11 +79,14 @@ struct AppFeature {
   @Dependency(SystemNotificationClient.self) private var systemNotificationClient
   @Dependency(TerminalClient.self) private var terminalClient
   @Dependency(WorktreeInfoWatcherClient.self) private var worktreeInfoWatcher
+  @Dependency(APIServerClient.self) private var apiServerClient
 
   var body: some Reducer<State, Action> {
     let core = Reduce<State, Action> { state, action in
       switch action {
       case .appLaunched:
+        let apiServerEnabled = state.settings.apiServerEnabled
+        let apiServerPort = state.settings.apiServerPort
         return .merge(
           .send(.repositories(.task)),
           .send(.settings(.task)),
@@ -101,6 +104,10 @@ struct AppFeature {
             for await event in await worktreeInfoWatcher.events() {
               await send(.repositories(.worktreeInfoEvent(event)))
             }
+          },
+          .run { [apiServerClient] _ in
+            guard apiServerEnabled else { return }
+            await apiServerClient.start(UInt16(apiServerPort))
           }
         )
 
@@ -310,6 +317,13 @@ struct AppFeature {
               }
             case .denied:
               await send(.systemNotificationsPermissionFailed(errorMessage: "Authorization status is denied."))
+            }
+          },
+          .run { [apiServerClient] _ in
+            if settings.apiServerEnabled {
+              await apiServerClient.start(UInt16(settings.apiServerPort))
+            } else {
+              await apiServerClient.stop()
             }
           }
         )

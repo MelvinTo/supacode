@@ -17,6 +17,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
   var promptForWorktreeCreation: Bool
   var defaultWorktreeBaseDirectoryPath: String?
   var shortcutOverrides: [AppShortcutID: AppShortcutOverride]
+  var apiServerEnabled: Bool
+  var apiServerPort: Int
 
   static let `default` = GlobalSettings(
     appearanceMode: .dark,
@@ -36,7 +38,9 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     automaticallyArchiveMergedWorktrees: false,
     promptForWorktreeCreation: true,
     defaultWorktreeBaseDirectoryPath: nil,
-    shortcutOverrides: [:]
+    shortcutOverrides: [:],
+    apiServerEnabled: false,
+    apiServerPort: 19_191
   )
 
   init(
@@ -57,7 +61,9 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     automaticallyArchiveMergedWorktrees: Bool,
     promptForWorktreeCreation: Bool,
     defaultWorktreeBaseDirectoryPath: String? = nil,
-    shortcutOverrides: [AppShortcutID: AppShortcutOverride] = [:]
+    shortcutOverrides: [AppShortcutID: AppShortcutOverride] = [:],
+    apiServerEnabled: Bool = false,
+    apiServerPort: Int = 19_191
   ) {
     self.appearanceMode = appearanceMode
     self.defaultEditorID = defaultEditorID
@@ -77,6 +83,8 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     self.promptForWorktreeCreation = promptForWorktreeCreation
     self.defaultWorktreeBaseDirectoryPath = defaultWorktreeBaseDirectoryPath
     self.shortcutOverrides = shortcutOverrides
+    self.apiServerEnabled = apiServerEnabled
+    self.apiServerPort = apiServerPort
   }
 
   init(from decoder: any Decoder) throws {
@@ -129,5 +137,11 @@ nonisolated struct GlobalSettings: Codable, Equatable, Sendable {
     shortcutOverrides =
       try container.decodeIfPresent([AppShortcutID: AppShortcutOverride].self, forKey: .shortcutOverrides)
       ?? Self.default.shortcutOverrides
+    apiServerEnabled =
+      try container.decodeIfPresent(Bool.self, forKey: .apiServerEnabled)
+      ?? Self.default.apiServerEnabled
+    apiServerPort =
+      try container.decodeIfPresent(Int.self, forKey: .apiServerPort)
+      ?? Self.default.apiServerPort
   }
 }

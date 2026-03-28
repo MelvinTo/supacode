@@ -7,6 +7,33 @@ struct AdvancedSettingsView: View {
   var body: some View {
     VStack(alignment: .leading) {
       Form {
+        Section("API Server") {
+          VStack(alignment: .leading) {
+            Toggle(
+              "Enable localhost API server",
+              isOn: $store.apiServerEnabled
+            )
+            .help("Start an HTTP API server on localhost for external tool integration")
+            Text("Allows external tools and scripts to manage repositories and terminals.")
+              .foregroundStyle(.secondary)
+              .font(.callout)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          if store.apiServerEnabled {
+            HStack {
+              Text("Port")
+              TextField("Port", value: $store.apiServerPort, format: .number)
+                .frame(width: 80)
+                .textFieldStyle(.roundedBorder)
+                .help("TCP port for the API server (requires restart of the server)")
+            }
+            Text("Listening on http://127.0.0.1:\(store.apiServerPort)/api/v1")
+              .foregroundStyle(.secondary)
+              .font(.callout)
+              .monospaced()
+          }
+        }
+
         Section("Advanced") {
           VStack(alignment: .leading) {
             Toggle(

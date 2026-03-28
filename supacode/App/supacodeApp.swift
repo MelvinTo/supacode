@@ -86,6 +86,7 @@ struct SupacodeApp: App {
   @State private var terminalManager: WorktreeTerminalManager
   @State private var worktreeInfoWatcher: WorktreeInfoWatcherManager
   @State private var commandKeyObserver: CommandKeyObserver
+  @State private var apiServer: APIServer
   @State private var store: StoreOf<AppFeature>
 
   @MainActor init() {
@@ -132,6 +133,8 @@ struct SupacodeApp: App {
     _worktreeInfoWatcher = State(initialValue: worktreeInfoWatcher)
     let keyObserver = CommandKeyObserver()
     _commandKeyObserver = State(initialValue: keyObserver)
+    let apiServer = APIServer()
+    _apiServer = State(initialValue: apiServer)
     let appStore = Store(
       initialState: AppFeature.State(settings: SettingsFeature.State(settings: initialSettings))
     ) {
@@ -154,9 +157,14 @@ struct SupacodeApp: App {
           worktreeInfoWatcher.eventStream()
         }
       )
+      values.apiServerClient = APIServerClient(
+        start: { port in apiServer.start(port: port) },
+        stop: { apiServer.stop() }
+      )
     }
     _store = State(initialValue: appStore)
     appDelegate.appStore = appStore
+    apiServer.configure(store: appStore)
     SettingsWindowManager.shared.configure(
       store: appStore,
       ghosttyShortcuts: shortcuts,

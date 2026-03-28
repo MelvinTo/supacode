@@ -23,6 +23,8 @@ struct SettingsFeature {
     var promptForWorktreeCreation: Bool
     var defaultWorktreeBaseDirectoryPath: String
     var shortcutOverrides: [AppShortcutID: AppShortcutOverride]
+    var apiServerEnabled: Bool
+    var apiServerPort: Int
     var selection: SettingsSection? = .general
     var repositorySettings: RepositorySettingsFeature.State?
     @Presents var alert: AlertState<Alert>?
@@ -46,6 +48,8 @@ struct SettingsFeature {
       automaticallyArchiveMergedWorktrees = settings.automaticallyArchiveMergedWorktrees
       promptForWorktreeCreation = settings.promptForWorktreeCreation
       shortcutOverrides = settings.shortcutOverrides
+      apiServerEnabled = settings.apiServerEnabled
+      apiServerPort = settings.apiServerPort
       defaultWorktreeBaseDirectoryPath =
         SupacodePaths.normalizedWorktreeBaseDirectoryPath(settings.defaultWorktreeBaseDirectoryPath) ?? ""
     }
@@ -71,7 +75,9 @@ struct SettingsFeature {
         defaultWorktreeBaseDirectoryPath: SupacodePaths.normalizedWorktreeBaseDirectoryPath(
           defaultWorktreeBaseDirectoryPath
         ),
-        shortcutOverrides: shortcutOverrides
+        shortcutOverrides: shortcutOverrides,
+        apiServerEnabled: apiServerEnabled,
+        apiServerPort: apiServerPort
       )
     }
   }
@@ -146,6 +152,8 @@ struct SettingsFeature {
         state.automaticallyArchiveMergedWorktrees = normalizedSettings.automaticallyArchiveMergedWorktrees
         state.promptForWorktreeCreation = normalizedSettings.promptForWorktreeCreation
         state.shortcutOverrides = normalizedSettings.shortcutOverrides
+        state.apiServerEnabled = normalizedSettings.apiServerEnabled
+        state.apiServerPort = normalizedSettings.apiServerPort
         state.defaultWorktreeBaseDirectoryPath = normalizedSettings.defaultWorktreeBaseDirectoryPath ?? ""
         state.repositorySettings?.globalDefaultWorktreeBaseDirectoryPath =
           normalizedSettings.defaultWorktreeBaseDirectoryPath
