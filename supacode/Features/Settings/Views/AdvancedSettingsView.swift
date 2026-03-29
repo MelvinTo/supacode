@@ -22,10 +22,14 @@ struct AdvancedSettingsView: View {
           if store.apiServerEnabled {
             HStack {
               Text("Port")
-              TextField("Port", value: $store.apiServerPort, format: .number)
-                .frame(width: 80)
-                .textFieldStyle(.roundedBorder)
-                .help("TCP port for the API server (requires restart of the server)")
+              TextField(
+                "Port",
+                value: $store.apiServerPort,
+                format: .number.grouping(.never)
+              )
+              .frame(width: 80)
+              .textFieldStyle(.roundedBorder)
+              .help("TCP port for the API server (requires restart of the server)")
             }
             Text("Listening on http://127.0.0.1:\(store.apiServerPort)/api/v1")
               .foregroundStyle(.secondary)
