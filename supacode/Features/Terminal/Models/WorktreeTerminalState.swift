@@ -81,11 +81,13 @@ final class WorktreeTerminalState {
       let settings = repositorySettings
       let setupScript: String?
       let tmuxInput: String?
+      let repoName = Repository.name(for: worktree.repositoryRootURL)
       if pendingSetupScript {
         setupScript = WorktreeTerminalManager.buildSetupScript(
           baseScript: settings.setupScript,
           autoSpawnTmux: settings.autoSpawnTmux,
           autoSpawnClaudeCode: settings.autoSpawnClaudeCode,
+          repositoryName: repoName,
           worktreeName: worktree.name
         )
         tmuxInput = nil
@@ -93,6 +95,7 @@ final class WorktreeTerminalState {
         setupScript = nil
         tmuxInput = WorktreeTerminalManager.buildTmuxCommand(
           autoSpawnClaudeCode: settings.autoSpawnClaudeCode,
+          repositoryName: repoName,
           worktreeName: worktree.name
         )
       } else {

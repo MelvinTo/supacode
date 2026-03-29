@@ -193,6 +193,7 @@ final class WorktreeTerminalManager {
         baseScript: settings.setupScript,
         autoSpawnTmux: settings.autoSpawnTmux,
         autoSpawnClaudeCode: settings.autoSpawnClaudeCode,
+        repositoryName: Repository.name(for: worktree.repositoryRootURL),
         worktreeName: worktree.name
       )
     } else {
@@ -204,6 +205,7 @@ final class WorktreeTerminalManager {
     if setupScript == nil, state.isFirstTab, settings.autoSpawnTmux {
       resolvedInput = Self.buildTmuxCommand(
         autoSpawnClaudeCode: settings.autoSpawnClaudeCode,
+        repositoryName: Repository.name(for: worktree.repositoryRootURL),
         worktreeName: worktree.name
       )
     } else {
@@ -214,10 +216,10 @@ final class WorktreeTerminalManager {
 
   static func buildTmuxCommand(
     autoSpawnClaudeCode: Bool,
+    repositoryName: String,
     worktreeName: String
   ) -> String {
-    // Sanitize worktree name for tmux session name (replace dots/colons)
-    let sessionName = worktreeName.replacing(/[.:]/, with: { _ in "-" })
+    let sessionName = tmuxSessionName(repositoryName: repositoryName, worktreeName: worktreeName)
     // -A attaches to existing session if it exists, otherwise creates a new one.
     // This resumes terminals across Supacode restarts.
     var cmd = "tmux new-session -A -s '\(sessionName)'"
@@ -231,11 +233,13 @@ final class WorktreeTerminalManager {
     baseScript: String,
     autoSpawnTmux: Bool,
     autoSpawnClaudeCode: Bool,
+    repositoryName: String,
     worktreeName: String
   ) -> String {
     guard autoSpawnTmux else { return baseScript }
     let tmuxCmd = buildTmuxCommand(
       autoSpawnClaudeCode: autoSpawnClaudeCode,
+      repositoryName: repositoryName,
       worktreeName: worktreeName
     )
     let trimmedBase = baseScript.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -243,6 +247,12 @@ final class WorktreeTerminalManager {
       return tmuxCmd
     }
     return trimmedBase + "\n" + tmuxCmd
+  }
+
+  /// Generates a globally unique tmux session name: `sc-{repo}-{worktree}`.
+  static func tmuxSessionName(repositoryName: String, worktreeName: String) -> String {
+    let sanitized = "sc-\(repositoryName)-\(worktreeName)"
+    return sanitized.replacing(/[.:\s\/]/, with: { _ in "-" })
   }
 
   @discardableResult
