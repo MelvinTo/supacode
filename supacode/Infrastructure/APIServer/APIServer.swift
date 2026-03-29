@@ -98,7 +98,12 @@ final class APIServer {
       }
 
       guard let request = HTTPRequestParser.parse(data) else {
-        let response = HTTPResponse.badRequest(message: "Malformed HTTP request")
+        let response = HTTPResponse(
+          statusCode: 400,
+          statusText: "Bad Request",
+          headers: [("Content-Type", "application/json")],
+          body: Data("{\"error\":\"Malformed HTTP request\"}".utf8)
+        )
         self?.sendResponse(response, on: connection)
         return
       }

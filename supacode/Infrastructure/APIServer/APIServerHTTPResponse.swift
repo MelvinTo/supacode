@@ -1,6 +1,6 @@
 import Foundation
 
-struct HTTPResponse: Sendable {
+nonisolated struct HTTPResponse: Sendable {
   var statusCode: Int
   var statusText: String
   var headers: [(String, String)]

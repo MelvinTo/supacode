@@ -1,13 +1,13 @@
 import Foundation
 
-struct HTTPRequest: Sendable {
+nonisolated struct HTTPRequest: Sendable {
   let method: String
   let path: String
   let headers: [(String, String)]
   let body: Data?
 }
 
-enum HTTPRequestParser {
+nonisolated enum HTTPRequestParser {
   static func parse(_ data: Data) -> HTTPRequest? {
     guard let headerEnd = data.range(of: Data("\r\n\r\n".utf8)) else {
       return nil
