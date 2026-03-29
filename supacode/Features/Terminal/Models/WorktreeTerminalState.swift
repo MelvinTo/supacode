@@ -69,51 +69,43 @@ final class WorktreeTerminalState {
     runScriptTabId != nil
   }
 
+  var isFirstTab: Bool {
+    tabManager.tabs.isEmpty
+  }
+
   func ensureInitialTab(focusing: Bool) {
     guard tabManager.tabs.isEmpty else { return }
     guard !isEnsuringInitialTab else { return }
     isEnsuringInitialTab = true
     Task {
+      let settings = repositorySettings
       let setupScript: String?
+      let tmuxInput: String?
       if pendingSetupScript {
-        let settings = repositorySettings
-        setupScript = Self.buildSetupScript(
+        setupScript = WorktreeTerminalManager.buildSetupScript(
           baseScript: settings.setupScript,
           autoSpawnTmux: settings.autoSpawnTmux,
           autoSpawnClaudeCode: settings.autoSpawnClaudeCode,
           worktreeName: worktree.name
         )
+        tmuxInput = nil
+      } else if settings.autoSpawnTmux {
+        setupScript = nil
+        tmuxInput = WorktreeTerminalManager.buildTmuxCommand(
+          autoSpawnClaudeCode: settings.autoSpawnClaudeCode,
+          worktreeName: worktree.name
+        )
       } else {
         setupScript = nil
+        tmuxInput = nil
       }
       await MainActor.run {
         if tabManager.tabs.isEmpty {
-          _ = createTab(focusing: focusing, setupScript: setupScript)
+          _ = createTab(focusing: focusing, setupScript: setupScript, initialInput: tmuxInput)
         }
         isEnsuringInitialTab = false
       }
     }
-  }
-
-  private static func buildSetupScript(
-    baseScript: String,
-    autoSpawnTmux: Bool,
-    autoSpawnClaudeCode: Bool,
-    worktreeName: String
-  ) -> String {
-    guard autoSpawnTmux else { return baseScript }
-    let sessionName = worktreeName.replacing(/[.:]/, with: { _ in "-" })
-    var tmuxCmd = "tmux new-session -A -s '\(sessionName)'"
-    if autoSpawnClaudeCode {
-      tmuxCmd += " 'claude'"
-    }
-    var script = ""
-    let trimmedBase = baseScript.trimmingCharacters(in: .whitespacesAndNewlines)
-    if !trimmedBase.isEmpty {
-      script = trimmedBase + "\n"
-    }
-    script += tmuxCmd
-    return script
   }
 
   @discardableResult

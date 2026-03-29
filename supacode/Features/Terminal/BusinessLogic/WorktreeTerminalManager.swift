@@ -185,10 +185,10 @@ final class WorktreeTerminalManager {
     initialInput: String? = nil
   ) {
     let state = state(for: worktree) { runSetupScriptIfNew }
+    @SharedReader(.repositorySettings(worktree.repositoryRootURL))
+    var settings = RepositorySettings.default
     let setupScript: String?
     if state.needsSetupScript() {
-      @SharedReader(.repositorySettings(worktree.repositoryRootURL))
-      var settings = RepositorySettings.default
       setupScript = Self.buildSetupScript(
         baseScript: settings.setupScript,
         autoSpawnTmux: settings.autoSpawnTmux,
@@ -198,32 +198,51 @@ final class WorktreeTerminalManager {
     } else {
       setupScript = nil
     }
-    _ = state.createTab(setupScript: setupScript, initialInput: initialInput)
+    // When tmux is enabled and this is the first tab (not a new worktree setup),
+    // inject tmux attach-or-create as initial input so existing worktrees also get tmux.
+    let resolvedInput: String?
+    if setupScript == nil, state.isFirstTab, settings.autoSpawnTmux {
+      resolvedInput = Self.buildTmuxCommand(
+        autoSpawnClaudeCode: settings.autoSpawnClaudeCode,
+        worktreeName: worktree.name
+      )
+    } else {
+      resolvedInput = initialInput
+    }
+    _ = state.createTab(setupScript: setupScript, initialInput: resolvedInput)
   }
 
-  private static func buildSetupScript(
+  static func buildTmuxCommand(
+    autoSpawnClaudeCode: Bool,
+    worktreeName: String
+  ) -> String {
+    // Sanitize worktree name for tmux session name (replace dots/colons)
+    let sessionName = worktreeName.replacing(/[.:]/, with: { _ in "-" })
+    // -A attaches to existing session if it exists, otherwise creates a new one.
+    // This resumes terminals across Supacode restarts.
+    var cmd = "tmux new-session -A -s '\(sessionName)'"
+    if autoSpawnClaudeCode {
+      cmd += " 'claude'"
+    }
+    return cmd
+  }
+
+  static func buildSetupScript(
     baseScript: String,
     autoSpawnTmux: Bool,
     autoSpawnClaudeCode: Bool,
     worktreeName: String
   ) -> String {
     guard autoSpawnTmux else { return baseScript }
-    // Sanitize worktree name for tmux session name (replace dots/colons)
-    let sessionName = worktreeName.replacing(/[.:]/, with: { _ in "-" })
-    // -A attaches to existing session if it exists, otherwise creates a new one.
-    // This resumes terminals across Supacode restarts.
-    var tmuxCmd = "tmux new-session -A -s '\(sessionName)'"
-    if autoSpawnClaudeCode {
-      // Only runs claude when creating a new session, not when reattaching
-      tmuxCmd += " 'claude'"
-    }
-    var script = ""
+    let tmuxCmd = buildTmuxCommand(
+      autoSpawnClaudeCode: autoSpawnClaudeCode,
+      worktreeName: worktreeName
+    )
     let trimmedBase = baseScript.trimmingCharacters(in: .whitespacesAndNewlines)
-    if !trimmedBase.isEmpty {
-      script = trimmedBase + "\n"
+    if trimmedBase.isEmpty {
+      return tmuxCmd
     }
-    script += tmuxCmd
-    return script
+    return trimmedBase + "\n" + tmuxCmd
   }
 
   @discardableResult
